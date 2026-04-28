@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_listin/authentication/models/mock_user.dart';
+import 'package:flutter_listin/listins/data/database.dart';
 import 'package:flutter_listin/listins/screens/widgets/home_drawer.dart';
 import 'package:flutter_listin/listins/screens/widgets/home_listin_item.dart';
 import '../models/listin.dart';
@@ -15,12 +16,25 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late AppDatabase _appdatabase;
   List<Listin> listListins = [];
 
   @override
   void initState() {
-    // TODO: Ao implementar os Listins, adicionar o refresh aqui
+    _appdatabase = AppDatabase();
+    getData();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _appdatabase.close();
+    super.dispose();
+  }
+
+  Widget _popMenuButtonBuilder(List<PopupMenuItem> listPopMenuItem) {
+    return PopupMenuButton(
+        itemBuilder: (BuildContext context) => listPopMenuItem);
   }
 
   @override
@@ -29,6 +43,22 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: HomeDrawer(user: widget.user),
       appBar: AppBar(
         title: const Text("Minhas listas"),
+        actions: [
+          _popMenuButtonBuilder([
+            PopupMenuItem(
+              child: const Text("Ordenar por nome"),
+              onTap: () async {
+                getData(orderByName: true);
+              },
+            ),
+            PopupMenuItem(
+              child: const Text("Ordenar por data de alteração"),
+              onTap: () async {
+                getData(orderByDateUpdate: true);
+              },
+            ),
+          ]),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -55,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : RefreshIndicator(
               onRefresh: () {
-                return refresh();
+                return getData();
               },
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
@@ -77,7 +107,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   showAddModal({Listin? listin}) {
-    showAddEditListinModal(context: context, onRefresh: refresh, model: listin);
+    showAddEditListinModal(
+        context: context,
+        onRefresh: getData,
+        model: listin,
+        appDataBase: _appdatabase);
   }
 
   showOptionModal(Listin listin) {
@@ -92,20 +126,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  refresh() async {
-    // Basta alimentar essa variável com Listins que, quando o método for
-    // chamado, a tela sera reconstruída com os itens.
-    List<Listin> listaListins = [];
-
-    //TODO - CRUD Listin: remover código mockado.
-    listaListins.add(
-      Listin(
-        id: "L01",
-        name: "Feira do mês",
-        obs: "Para compras de reabastecimento mensais.",
-        dateCreate: DateTime.now(),
-        dateUpdate: DateTime.now(),
-      ),
+  getData({
+    bool orderByName = false,
+    bool orderByDateUpdate = false,
+  }) async {
+    List<Listin> listaListins = await _appdatabase.getListins(
+      orderByDateUpdate: orderByDateUpdate,
+      orderByName: orderByName,
     );
 
     setState(() {
@@ -114,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void remove(Listin model) async {
-    // TODO - CRUD Listin: remover o Listin
-    refresh();
+    await _appdatabase.deleteListin(int.parse(model.id));
+    getData();
   }
 }
