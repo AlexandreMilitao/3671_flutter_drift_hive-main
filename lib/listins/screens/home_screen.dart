@@ -18,6 +18,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late AppDatabase _appdatabase;
   List<Listin> listListins = [];
+  TextEditingController textFieldController = TextEditingController();
+  ValueNotifier<String> searchQuery = ValueNotifier<String>('');
 
   @override
   void initState() {
@@ -29,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _appdatabase.close();
+    textFieldController.dispose();
+    searchQuery.dispose();
     super.dispose();
   }
 
@@ -89,17 +93,50 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
-                child: ListView(
-                  children: List.generate(
-                    listListins.length,
-                    (index) {
-                      Listin listin = listListins[index];
-                      return HomeListinItem(
-                        listin: listin,
-                        showOptionModal: showOptionModal,
-                      );
-                    },
-                  ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: textFieldController,
+                      onChanged: (value) {
+                        searchQuery.value = value;
+                      },
+                      decoration: const InputDecoration(
+                        hintText: "Buscar listins",
+                        suffixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                    Expanded(
+                      child: ValueListenableBuilder<String>(
+                        valueListenable: searchQuery,
+                        builder: (context, query, _) {
+                          return StreamBuilder<List<Listin>>(
+                            stream: _appdatabase.searchListinByName(query),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return const Center(child: Text("Erro"));
+                              }
+                              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                return const Center(
+                                    child: Text("Nenhuma lista encontrada"));
+                              }
+                              final listins = snapshot.data!;
+
+                              return ListView.builder(
+                                itemCount: listins.length,
+                                itemBuilder: (context, index) {
+                                  final listin = listins[index];
+                                  return HomeListinItem(
+                                    listin: listin,
+                                    showOptionModal: showOptionModal,
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

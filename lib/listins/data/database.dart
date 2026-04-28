@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart' as material;
 import 'package:flutter_listin/listins/models/listin.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -79,6 +80,26 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> deleteListin(int id) async {
     return await (delete(listinTable)..where((row) => row.id.equals(id))).go();
+  }
+
+  Stream<List<Listin>> searchListinByName(String name) {
+    return (select(listinTable)..where((u) => u.name.contains(name)))
+        .watch()
+        .map((listData) {
+      List<Listin> temp = [];
+      for (ListinTableData row in listData) {
+        temp.add(
+          Listin(
+            id: row.id.toString(),
+            name: row.name,
+            obs: row.obs,
+            dateCreate: row.dateCreate,
+            dateUpdate: row.dateUpdate,
+          ),
+        );
+      }
+      return temp;
+    });
   }
 }
 
